@@ -1,4 +1,4 @@
-# Attempt [![Build Status](https://secure.travis-ci.org/TomFrost/node-attempt.png?branch=master)](http://travis-ci.org/TomFrost/node-attempt) [![Code Climate](https://codeclimate.com/github/TomFrost/node-attempt/badges/gpa.svg)](https://codeclimate.com/github/TomFrost/node-attempt)
+# Attempt
 Retries functions that throw or call back with an error, in crazily
 customizable ways.
 
@@ -38,15 +38,19 @@ standard Node.js convention).  The function call looks like this:
 
 **attempt([options], tryFunc, [callback])**
 
-tryFunc is called with one argument: attempts.  It is the number of times the
+tryFunc is called with two arguments: attempts and skip.  attempts is the number of times the
 tryFunc has been run before.
 
-	attempt(function(attempts) {
+	attempt(function(attempts, skip) {
 		if (attempts)
 			console.log('This is retry #' + attempts);
+			if (ext_var) skip('skipping to callback!');
 		else
 			console.log('This is the first attempt!');
 	});
+	
+skip is a callback function that will skip the retries count and go straight to main callback.
+Works the same as third argument in onError function, described below.
 
 ### Options
 The following options are set per request:
@@ -115,10 +119,23 @@ to do something asynchronous to fix the error.
         	}
         },
         function() { flakyApiCall(this); },
-		function(err, result) { /* ... */ });
+	function(err, result) { /* ... */ });
 
 By default, calling done() will ignore the retry interval.  If you still want
 it to be observed, call *done(true)*.
+
+The third argument is a function that is going to bypass retries count and go
+straight to main callback. Arguments supplied to it will be passed along to
+main callback. If there are no arguments given, it will by default call it with 'skipped' as first argument.
+
+	attempt(
+		{
+			onError: function(err, done, skip) {
+        		if (err.indexOf('15') !== -1) skip("We can't recover from that error anyway");
+        	}
+        },
+        function() { flakyApiCall(this); },
+	function(err, result) { /* This function is executed after skip call */ });
 
 #### max
 *Default: Infinity.* The maximum number of milliseconds to wait before retrying.
